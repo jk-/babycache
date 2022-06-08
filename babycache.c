@@ -40,6 +40,8 @@
  * Q: What next? Random buckets?
  *
  * "Seperate chaining" brought me to "Open Addressing" --
+ * Essentially, open addressing gets a bucket, and if it has an entry and the key
+ * is different, it increments the pointer to find the next empty bucket.
  *      Q: My main question now is what if you run out of empty buckets?
  *      A: when we add a new entry, we grow the hash table relative to its load 
  *      (probability of conflict) or "capacity".
