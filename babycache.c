@@ -17,15 +17,18 @@
  *
  * I renamed things to make it more clear and added helper methods for memory, etc.
  *
+ * I looked up hashing for tables and FNV-1a looks to be the best aglo for performance
+ * and conflict. There is a concept called table load which is the ratio of
+ * count to capacity for conflicts.
  */
 
-
+#define FNV_OFFSET 14695981039346656037UL
+#define FNV_PRIME 1099511628211UL
 
 /* HEADERS */
 
 typedef struct {
-    char *key;
-    uint32_t hash; // added a hashed key
+    uint64_t hash; // added a hashed key
     char *value;
 } Entry;
 
@@ -36,7 +39,7 @@ typedef struct {
 } Table;
 
 
-uint32_t create_hash(char *value);
+static uint64_t hash_string(const char* string);
 
 
 Table *table_init();
@@ -69,13 +72,17 @@ Entry *create_entry(char *key, char *value) {
     Entry *entry = (Entry *) malloc(sizeof(Entry));
     if (entry == NULL)
         exit_oom();
-    entry->key = key;
+    entry->hash = hash_string(key);
     entry->value = value;
     return entry;
 }
 
-uint32_t create_hash(char *value) {
-    uint32_t hash = 0x42343434;
+static uint64_t hash_string(const char* string) {
+    uint64_t hash = FNV_OFFSET;
+    for (const char* p = string; *p; p++) {
+        hash ^= (uint64_t)(unsigned char)(*p);
+        hash *= FNV_PRIME;
+    }
     return hash;
 }
 
@@ -85,7 +92,7 @@ void table_add(Table *ht, Entry *entry) {
         exit_oom();
     ht->entries[ht->count] = *entry;
     ht->count++;
-    printf("inserted: %s %s\n", entry->key, entry->value);
+    printf("inserted: %llu %s\n", entry->hash, entry->value);
 }
 
 void print_logo() {
