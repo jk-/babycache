@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "print.h"
+#include "hash.h"
 
 /* VERSION: 1.0
  * --------------------------
@@ -56,10 +57,6 @@
  */
 
 /* CONSTS */
-
-#define FNV_OFFSET      14695981039346656037UL
-#define FNV_PRIME       1099511628211UL
-
 #define HASH_LOAD_BALANCE       0.75
 #define DEFAULT_HASH_CAPACITY   32
 
@@ -80,9 +77,6 @@ typedef struct {
 
 /* HEADERS */
 
-static uint64_t hash_string(const char* string);
-
-
 Table *table_init();
 void table_free(Table *ht);
 void table_insert(Table *ht, char *key, char *value);
@@ -99,15 +93,6 @@ Entry *create_entry(char *key, char *value) {
     entry->key = key;
     entry->value = value;
     return entry;
-}
-
-static uint64_t hash_string(const char* string) {
-    uint64_t hash = FNV_OFFSET;
-    for (const char* p = string; *p; p++) {
-        hash ^= (uint64_t)(unsigned char)(*p);
-        hash *= FNV_PRIME;
-    }
-    return hash;
 }
 
 void table_add(Table *ht, Entry *entry) {
