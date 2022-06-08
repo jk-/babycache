@@ -8,4 +8,4 @@
                    |___/                           
 ```
 
-Just a tiny, distrbuted in-memory cache.
+Just a tiny, distrbuted in-memory cache with zero persistence.
