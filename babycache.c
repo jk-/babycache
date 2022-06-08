@@ -75,8 +75,8 @@ Entry *create_entry(char *key, char *value) {
 }
 
 uint32_t create_hash(char *value) {
-	hash = 0x42343434;
-	return hash
+	uint32_t hash = 0x42343434;
+	return hash;
 }
 
 void table_add(Table *ht, Entry *entry) {
@@ -114,7 +114,7 @@ Table *table_init() {
 void table_free(Table *ht) {
 	free(ht->entries);
 	free(ht);
-	printf("hash table memory freed");
+	printf("hash table memory freed\n");
 }
 
 
