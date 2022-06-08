@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "print.h"
+
 /* VERSION: 1.0
  * --------------------------
  * This isn't a hash table because we have not hashed the keys. 
@@ -53,10 +55,16 @@
  *
  */
 
-#define FNV_OFFSET 14695981039346656037UL
-#define FNV_PRIME 1099511628211UL
+/* CONSTS */
 
-/* HEADERS */
+#define FNV_OFFSET      14695981039346656037UL
+#define FNV_PRIME       1099511628211UL
+
+#define HASH_LOAD_BALANCE       0.75
+#define DEFAULT_HASH_CAPACITY   32
+
+
+/* DATA STRUCTS */
 
 typedef struct {
     char *key;
@@ -65,10 +73,12 @@ typedef struct {
 
 typedef struct {
     int count; 
-    int capacity;   // now we know why capacity is here
+    int capacity;
     Entry *entries;
 } Table;
 
+
+/* HEADERS */
 
 static uint64_t hash_string(const char* string);
 
@@ -80,29 +90,12 @@ char *table_get(Table *ht, char *key, uint32_t hash);
 
 Entry *create_entry(char *key, char *value);
 
-void print_logo();
-void print_awaiting_connections();
-
-int exit_oom();
-
 
 /* IMPLEMENTATION */
 
-int exit_oom() {
-    // Unable to allocate memory
-    printf("Unable to allocate memory.");
-    exit(137);  // Out of memory
-}
-
-void print_awaiting_connections() {
-    printf("\tListening on localhost:6969\n");
-    printf("\n");
-}
-
 Entry *create_entry(char *key, char *value) {
     Entry *entry = (Entry *) malloc(sizeof(Entry));
-    if (entry == NULL)
-        exit_oom();
+    if (entry == NULL) exit_oom();
     entry->key = key;
     entry->value = value;
     return entry;
@@ -125,28 +118,15 @@ void table_add(Table *ht, Entry *entry) {
     // No point in allocating an entries memory if its not added (can just replace
     // the value if the key exists
     ht->entries = (Entry *) realloc(ht->entries, sizeof(Entry) * (ht->count + 1));
-    if (ht->entries == NULL)
-        exit_oom();
+    if (ht->entries == NULL) exit_oom();
     ht->entries[ht->count] = *entry;
     ht->count++;
     printf("inserted: %s %s\n", entry->key, entry->value);
 }
 
-void print_logo() {
-    printf("\n");
-    printf("\t _           _                          _\n");
-    printf("\t| |__   __ _| |__  _   _  ___ __ _  ___| |__   ___\n");
-    printf("\t| '_ \\ / _` | '_ \\| | | |/ __/ _` |/ __| '_ \\ / _ \\\n");
-    printf("\t| |_) | (_| | |_) | |_| | (_| (_| | (__| | | |  __/\n");
-    printf("\t|_.__/ \\__,_|_.__/ \\__, |\\___\\__,_|\\___|_| |_|\\___|\n");
-    printf("\t                   |___/\n");
-    printf("\n");
-}
-
 Table *table_init() {
     Table *ht = (Table *) malloc(sizeof(Table));
-    if (ht == NULL)
-        exit_oom();
+    if (ht == NULL) exit_oom();
     ht->count = 0;
     ht->capacity = 0;
     ht->entries = NULL;
