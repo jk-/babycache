@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "print.h"
 #include "hash.h"
@@ -56,10 +57,8 @@
  *
  */
 
-/* CONSTS */
-#define HASH_LOAD_BALANCE       0.75
-#define DEFAULT_HASH_CAPACITY   32
-
+#define TABLE_MAX_LOAD          0.75
+#define DEBUG_PRINT_CODE
 
 /* DATA STRUCTS */
 
@@ -74,64 +73,136 @@ typedef struct {
     Entry *entries;
 } Table;
 
+#define GROW_CAPACITY(capacity)  ((capacity) < 8 ? 8 : (capacity) * 2)
 
 /* HEADERS */
 
-Table *table_init();
+void adjust_table_capacity(Table *ht, int capacity);
+
+Table *table_create();
+void table_init(Table *ht);
 void table_free(Table *ht);
-void table_insert(Table *ht, char *key, char *value);
-char *table_get(Table *ht, char *key, uint32_t hash);
-
-Entry *create_entry(char *key, char *value);
-
+bool table_add(Table *ht, char *key, char *value);
+static Entry *table_get(Entry *entries, int capacity, char *key);
 
 /* IMPLEMENTATION */
 
-Entry *create_entry(char *key, char *value) {
-    Entry *entry = (Entry *) malloc(sizeof(Entry));
-    if (entry == NULL) exit_oom();
+static Entry *table_get(Entry *entries, int capacity, char *key) {
+    uint32_t index = hash_string(key) & (capacity - 1);
+
+    Entry* tombstone = NULL;
+  
+    for (;;) {
+        Entry* entry = &entries[index];
+        if (entry->key == NULL) {
+            if (entry->value == NULL) {
+                // Empty entry.
+                return tombstone != NULL ? tombstone : entry;
+            } else {
+                // We found a tombstone.
+                if (tombstone == NULL) tombstone = entry;
+            }
+        } else if (entry->key == key) {
+            // We found the key.
+            return entry;
+        }
+        index = (index + 1) & (capacity - 1);
+    }
+}
+
+
+void adjust_table_capacity(Table *ht, int capacity) {
+    /* Adjust Capacity of Hash table 
+     *
+     * The bin size is too low and we can get conflicts.
+     * This resizes allocates more memory for more bins
+     * to prevent conflicts.
+     *
+     * 1. Allocate memory for new capacity size
+     * 2. Set all buckets to NULL
+     * 3. Move all entries in table to the new memory location
+     * 4. Free and update table entries pointer
+     **/
+    Entry *entries = (Entry *) malloc(sizeof(Table) * capacity);
+    for (int i=0; i < capacity; i++) {
+        entries[i].key = NULL;
+        entries[i].value = NULL;
+    }
+
+    ht->count = 0;
+    for (int i=0; i < ht->capacity; i++) {
+        Entry *entry = &ht->entries[i];
+        if (entry->key == NULL) continue;
+
+        Entry *dest = table_get(entries, capacity, entry->key);
+        dest->key = entry->key;
+        dest->value = entry->value;
+        ht->count++;
+    }
+
+    free(ht->entries);
+    ht->entries = entries;
+}
+
+bool table_add(Table *ht, char *key, char *value) {
+    /* Add an entry into the table
+     *
+     * 1. Check capacity of table and grow it if the load is too high
+     * 2. Find Entry (can return tombstone). Balancing requires 
+     *    resetting all the buckets.
+     *          Q: Why does capacity change before finding a hit?
+     */
+
+    // 1:
+    if (ht->count + 1 > ht->capacity * TABLE_MAX_LOAD) {
+        int capacity = GROW_CAPACITY(ht->capacity);
+        adjust_table_capacity(ht, capacity); // if < 8, 8, else x*2
+    }
+
+    // 2:
+    Entry* entry = table_get(ht->entries, ht->capacity, key);
+    bool isNewKey = entry->key == NULL;
+    if (isNewKey && (entry->value == NULL)) ht->count++;
+
+
     entry->key = key;
     entry->value = value;
-    return entry;
+
+#ifdef DEBUG_PRINT_CODE
+    printf("inserted: %s %s\n", key, value);
+#endif
+    
+    return isNewKey;
 }
 
-void table_add(Table *ht, Entry *entry) {
-    // TODO:
-    // We need to find the key in the table before we allocate more space
-    // Since we are now going to bin the hash keys.
-    // We need to change the interface to accept key/value and not an entire entry
-    // No point in allocating an entries memory if its not added (can just replace
-    // the value if the key exists
-    ht->entries = (Entry *) realloc(ht->entries, sizeof(Entry) * (ht->count + 1));
-    if (ht->entries == NULL) exit_oom();
-    ht->entries[ht->count] = *entry;
-    ht->count++;
-    printf("inserted: %s %s\n", entry->key, entry->value);
-}
-
-Table *table_init() {
-    Table *ht = (Table *) malloc(sizeof(Table));
-    if (ht == NULL) exit_oom();
+void table_init(Table *ht) {
     ht->count = 0;
     ht->capacity = 0;
     ht->entries = NULL;
+}
+
+Table *table_create() {
+    Table *ht = (Table *) malloc(sizeof(Table));
+    if (ht == NULL) exit_oom();
+    table_init(ht);
     return ht;
 }
 
 void table_free(Table *ht) {
     free(ht->entries);
     free(ht);
+    table_init(ht);
 }
 
 int main(int argc, char *argv[]) {
     print_logo();
     print_awaiting_connections();
 
-    Table *ht = table_init();
+    Table *ht = table_create();
 
-    table_add(ht, create_entry("jon", "doe"));
-    table_add(ht, create_entry("jon1", "doe1"));
-    table_add(ht, create_entry("jon2", "doe2"));
+    table_add(ht, "jon", "doe1");
+    table_add(ht, "jon1", "doe1");
+    table_add(ht, "jon2", "doe2");
 
     table_free(ht);
     return 0;
