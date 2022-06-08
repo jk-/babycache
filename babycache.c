@@ -20,6 +20,9 @@
  */
 
 
+
+/* HEADERS */
+
 typedef struct {
 	char *key;
 	uint32_t hash; // added a hashed key
@@ -33,6 +36,9 @@ typedef struct {
 } Table;
 
 
+uint32_t create_hash(char *value);
+
+
 Table *table_init();
 void table_free(Table *ht);
 void table_insert(Table *ht, char *key, char *value);
@@ -40,15 +46,13 @@ char *table_get(Table *ht, char *key, uint32_t hash);
 
 Entry *create_entry(char *key, char *value);
 
-// prints
 void print_logo();
 void print_awaiting_connections();
 
-// errors
 int exit_oom();
 
 
-//
+/* IMPLEMENTATION */
 
 int exit_oom() {
 	// Unable to allocate memory
@@ -68,6 +72,11 @@ Entry *create_entry(char *key, char *value) {
 	entry->key = key;
 	entry->value = value;
 	return entry;
+}
+
+uint32_t create_hash(char *value) {
+	hash = 0x42343434;
+	return hash
 }
 
 void table_add(Table *ht, Entry *entry) {
@@ -114,6 +123,7 @@ int main(int argc, char *argv[]) {
 	print_awaiting_connections();
 
 	Table *ht = table_init();
+
 	table_add(ht, create_entry("jon", "doe"));
 	table_add(ht, create_entry("jon1", "doe1"));
 	table_add(ht, create_entry("jon2", "doe2"));
