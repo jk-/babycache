@@ -2,6 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "print.h"
 #include "hash.h"
@@ -64,9 +69,41 @@
  * -- LEARNING LOG --
  */
 
-#define TABLE_MAX_LOAD          0.75
-#define DEBUG_PRINT_CODE
+
+/* VERSION: 3.0
+ * --------------------------
+ * Server:
+ *      1. Listen on localhost 6969
+ *      2. Accept a command to ADD a key/value
+ *      3. Accept a command to GET a key/value
+ *
+ * -- LEARNING LOG --
+ */
+
+
+#define TABLE_MAX_LOAD           0.75
 #define GROW_CAPACITY(capacity)  ((capacity) < 8 ? 8 : (capacity) * 2)
+#define DEBUG_PRINT_CODE
+
+// SERVER
+#define MAXLINE         4096    /*max text line length*/
+#define SERV_PORT       6969    /*port*/
+#define LISTENQ         8       /*maximum number of client connections */
+
+#define FOREACH_COMMAND(CMD) \
+        CMD(ADD)   \
+        CMD(GET)  \
+
+#define GENERATE_ENUM(ENUM) ENUM,
+#define GENERATE_STRING(STRING) #STRING,
+
+enum COMMAND {
+    FOREACH_COMMAND(GENERATE_ENUM)
+};
+
+static const char *COMMAND_STRING[] = {
+    FOREACH_COMMAND(GENERATE_STRING)
+};
 
 /* HEADERS */
 
@@ -80,6 +117,7 @@ typedef struct {
     int capacity;   // how many bins or capacity the table has
     Entry *entries;
 } Table;
+
 
 void adjust_table_capacity(Table *ht, int capacity);
 
@@ -223,25 +261,50 @@ void table_free(Table *ht) {
 
 int main(int argc, char *argv[]) {
     print_logo();
-    print_awaiting_connections();
 
     Table *ht = table_create();
 
-    table_add(ht, "jon", "doe1");
-    table_add(ht, "jon1", "doe1");
-    table_add(ht, "jon2", "doe2");
-    table_add(ht, "jon3", "doe3");
-    table_add(ht, "jon4", "doe4");
-    table_add(ht, "jon5", "doe5");
-    table_add(ht, "jon6", "doe6");
+    int listenfd, connfd, n;
+    socklen_t clilen;
+    char buf[MAXLINE];
+    char delim[] = " ";
+    char *ptr;
 
-    print_entries(ht);
+    struct sockaddr_in cliaddr, servaddr;
 
-    char *key = "jon3";
-    char *value;
+    listenfd = socket (AF_INET, SOCK_STREAM, 0);
 
-    value = table_get(ht, key);
-    printf("found value: %s\n", value);
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(SERV_PORT);
+
+    bind (listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
+
+    listen (listenfd, LISTENQ);
+
+    print_awaiting_connections();
+
+    for (;;) {
+        clilen = sizeof(cliaddr);
+        connfd = accept (listenfd, (struct sockaddr *) &cliaddr, &clilen);
+        printf("%s\n","Received request...");
+
+        while ( (n = recv(connfd, buf, MAXLINE,0)) > 0)  {
+            ptr = strtok(buf, delim);
+            if (strcmp(ptr, COMMAND_STRING[ADD]) == 0) {
+                table_add(ht, strtok(buf, delim), strtok(buf, delim));
+            } else if (strcmp(ptr, COMMAND_STRING[GET]) == 0) {
+                char *value = table_get(ht, strtok(buf, delim));
+                send(connfd, value, strlen(value)+1, 0);
+            }
+        }
+        if (n < 0) {
+            perror("Read error");
+            exit(1);
+        }
+        close(connfd);
+    }
+    close (listenfd);
 
     table_free(ht);
     return 0;
