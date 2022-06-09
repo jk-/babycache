@@ -57,10 +57,18 @@
  *
  */
 
+/* VERSION: 2.1
+ * --------------------------
+ * Implement find by string in the table
+ *
+ * -- LEARNING LOG --
+ */
+
 #define TABLE_MAX_LOAD          0.75
 #define DEBUG_PRINT_CODE
+#define GROW_CAPACITY(capacity)  ((capacity) < 8 ? 8 : (capacity) * 2)
 
-/* DATA STRUCTS */
+/* HEADERS */
 
 typedef struct {
     char *key;
@@ -68,14 +76,10 @@ typedef struct {
 } Entry;
 
 typedef struct {
-    int count; 
-    int capacity;
+    int count;      // how many entries in the table
+    int capacity;   // how many bins or capacity the table has
     Entry *entries;
 } Table;
-
-#define GROW_CAPACITY(capacity)  ((capacity) < 8 ? 8 : (capacity) * 2)
-
-/* HEADERS */
 
 void adjust_table_capacity(Table *ht, int capacity);
 
@@ -83,13 +87,21 @@ Table *table_create();
 void table_init(Table *ht);
 void table_free(Table *ht);
 bool table_add(Table *ht, char *key, char *value);
-bool table_get(Table *ht, char *key, char *value);
+char *table_get(Table *ht, char *key);
 
+// static means it can only be used in this file
 static Entry *find_entry(Entry *entries, int capacity, char *key);
 
 void print_entries(Table *ht);
 
 /* IMPLEMENTATION */
+
+char *table_get(Table *ht, char *key) {
+    if (ht->count == 0) return NULL;
+
+    Entry *entry = find_entry(ht->entries, ht->capacity, key);
+    return entry->value;
+}
 
 void print_entries(Table *ht) {
 #ifdef DEBUG_PRINT_CODE
@@ -124,21 +136,25 @@ void adjust_table_capacity(Table *ht, int capacity) {
     /* Adjust Capacity of Hash table 
      *
      * The bin size is too low and we can get conflicts.
-     * This resizes allocates more memory for more bins
-     * to prevent conflicts.
+     * This resize allocates more memory for more bins
+     * to prevent conflicts (capacity).
      *
      * 1. Allocate memory for new capacity size
      * 2. Set all buckets to NULL
      * 3. Move all entries in table to the new memory location
      * 4. Free and update table entries pointer
      **/
+
+    // 1.
     Entry *entries = (Entry *) malloc(sizeof(Entry) * capacity);
     if (entries == NULL) exit_oom();
     for (int i=0; i < capacity; i++) {
+        // 2.
         entries[i].key = NULL;
         entries[i].value = NULL;
     }
-
+    
+    // 3.
     ht->count = 0;
     for (int i=0; i < ht->capacity; i++) {
         Entry *entry = &ht->entries[i];
@@ -149,7 +165,8 @@ void adjust_table_capacity(Table *ht, int capacity) {
         dest->value = entry->value;
         ht->count++;
     }
-
+    
+    // 4.
     free(ht->entries);
     ht->entries = entries;
     ht->capacity = capacity;
@@ -162,6 +179,9 @@ bool table_add(Table *ht, char *key, char *value) {
      * 2. Find Entry (can return tombstone). Balancing requires 
      *    resetting all the buckets.
      *          Q: Why does capacity change before finding a hit?
+     *          A: one answer is that it could be zero to start and if it is
+     *             that can screw up the index look-up in find_entry.
+     * 3. Update key/value at location
      */
 
     // 1:
@@ -175,6 +195,7 @@ bool table_add(Table *ht, char *key, char *value) {
     bool isNewKey = entry->key == NULL;
     if (isNewKey && (entry->value == NULL)) ht->count++;
 
+    // 3:
     entry->key = key;
     entry->value = value;
 
@@ -215,6 +236,12 @@ int main(int argc, char *argv[]) {
     table_add(ht, "jon6", "doe6");
 
     print_entries(ht);
+
+    char *key = "jon3";
+    char *value;
+
+    value = table_get(ht, key);
+    printf("found value: %s\n", value);
 
     table_free(ht);
     return 0;
