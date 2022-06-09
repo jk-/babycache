@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -268,20 +269,20 @@ int main(int argc, char *argv[]) {
     socklen_t clilen;
     char buf[MAXLINE];
     char delim[] = " ";
-    char *ptr, lookup;
+    char *ptr, *lookup;
     char *parts[3];
 
     struct sockaddr_in cliaddr, servaddr;
 
-    listenfd = socket (AF_INET, SOCK_STREAM, 0);
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
 
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
     servaddr.sin_port = htons(SERV_PORT);
 
-    bind (listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
 
-    listen (listenfd, LISTENQ);
+    listen(listenfd, LISTENQ);
 
     print_awaiting_connections();
 
@@ -289,9 +290,12 @@ int main(int argc, char *argv[]) {
         clilen = sizeof(cliaddr);
         connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen);
 
+        printf("Connection made..\n");
         while ((n = recv(connfd, buf, MAXLINE,0)) > 0)  {
+            printf("%s\n", buf);
             i = 0;
             ptr = strtok(buf, delim);
+            printf("Command: %s\n", ptr);
             while (ptr != NULL) {
                 parts[i] = ptr;
                 ptr = strtok(NULL, delim);
@@ -299,11 +303,15 @@ int main(int argc, char *argv[]) {
             }
             if (strcmp(parts[0], COMMAND_STRING[ADD]) == 0) {
                 table_add(ht, parts[1], parts[2]);
-                printf("ADD: %s %s\n", parts[1], parts[2]);
+                send(connfd, "1", 1, 0);
+                printf("\tADDED: %s %s\n", parts[1], parts[2]);
             } else if (strcmp(parts[0], COMMAND_STRING[GET]) == 0) {
-                printf("GET: %s\n", parts[1]);
                 lookup = table_get(ht, parts[1]);
-                send(connfd, lookup, strlen(lookup), 0);
+                printf("\tGET: %s %s\n", parts[1], lookup);
+                if (lookup != NULL)
+                    send(connfd, lookup, strlen(lookup), 0);
+                else
+                    send(connfd, "0", 1, 0);
             }
             for(i=0; i<sizeof(parts)/sizeof(parts[0]);i++)
                 parts[i] = NULL;
