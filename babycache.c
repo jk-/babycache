@@ -83,11 +83,21 @@ Table *table_create();
 void table_init(Table *ht);
 void table_free(Table *ht);
 bool table_add(Table *ht, char *key, char *value);
-static Entry *table_get(Entry *entries, int capacity, char *key);
+bool table_get(Table *ht, char *key, char *value);
+
+static Entry *find_entry(Entry *entries, int capacity, char *key);
+
+void print_entries(Table *ht);
 
 /* IMPLEMENTATION */
 
-static Entry *table_get(Entry *entries, int capacity, char *key) {
+void print_entries(Table *ht) {
+    for (int i=0; i<ht->count; i++) {
+        printf("key(%s) val(%s)\n", ht->entries[i].key, ht->entries[i].value);
+    }
+}
+
+static Entry *find_entry(Entry *entries, int capacity, char *key) {
     uint32_t index = hash_string(key) & (capacity - 1);
 
     Entry* tombstone = NULL;
@@ -123,7 +133,8 @@ void adjust_table_capacity(Table *ht, int capacity) {
      * 3. Move all entries in table to the new memory location
      * 4. Free and update table entries pointer
      **/
-    Entry *entries = (Entry *) malloc(sizeof(Table) * capacity);
+    Entry *entries = (Entry *) malloc(sizeof(Entry) * capacity);
+    if (entries == NULL) exit_oom();
     for (int i=0; i < capacity; i++) {
         entries[i].key = NULL;
         entries[i].value = NULL;
@@ -134,7 +145,7 @@ void adjust_table_capacity(Table *ht, int capacity) {
         Entry *entry = &ht->entries[i];
         if (entry->key == NULL) continue;
 
-        Entry *dest = table_get(entries, capacity, entry->key);
+        Entry *dest = find_entry(entries, capacity, entry->key);
         dest->key = entry->key;
         dest->value = entry->value;
         ht->count++;
@@ -142,6 +153,7 @@ void adjust_table_capacity(Table *ht, int capacity) {
 
     free(ht->entries);
     ht->entries = entries;
+    ht->capacity = capacity;
 }
 
 bool table_add(Table *ht, char *key, char *value) {
@@ -160,10 +172,9 @@ bool table_add(Table *ht, char *key, char *value) {
     }
 
     // 2:
-    Entry* entry = table_get(ht->entries, ht->capacity, key);
+    Entry* entry = find_entry(ht->entries, ht->capacity, key);
     bool isNewKey = entry->key == NULL;
     if (isNewKey && (entry->value == NULL)) ht->count++;
-
 
     entry->key = key;
     entry->value = value;
@@ -203,6 +214,8 @@ int main(int argc, char *argv[]) {
     table_add(ht, "jon", "doe1");
     table_add(ht, "jon1", "doe1");
     table_add(ht, "jon2", "doe2");
+
+    print_entries(ht);
 
     table_free(ht);
     return 0;
