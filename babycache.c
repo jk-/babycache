@@ -92,9 +92,11 @@ void print_entries(Table *ht);
 /* IMPLEMENTATION */
 
 void print_entries(Table *ht) {
-    for (int i=0; i<ht->count; i++) {
-        printf("key(%s) val(%s)\n", ht->entries[i].key, ht->entries[i].value);
+#ifdef DEBUG_PRINT_CODE
+    for (int i=0; i<ht->capacity; i++) {
+        printf("%d: %s->%s\n", i, ht->entries[i].key, ht->entries[i].value);
     }
+#endif
 }
 
 static Entry *find_entry(Entry *entries, int capacity, char *key) {
@@ -106,14 +108,11 @@ static Entry *find_entry(Entry *entries, int capacity, char *key) {
         Entry* entry = &entries[index];
         if (entry->key == NULL) {
             if (entry->value == NULL) {
-                // Empty entry.
                 return tombstone != NULL ? tombstone : entry;
             } else {
-                // We found a tombstone.
                 if (tombstone == NULL) tombstone = entry;
             }
         } else if (entry->key == key) {
-            // We found the key.
             return entry;
         }
         index = (index + 1) & (capacity - 1);
@@ -172,17 +171,13 @@ bool table_add(Table *ht, char *key, char *value) {
     }
 
     // 2:
-    Entry* entry = find_entry(ht->entries, ht->capacity, key);
+    Entry *entry = find_entry(ht->entries, ht->capacity, key);
     bool isNewKey = entry->key == NULL;
     if (isNewKey && (entry->value == NULL)) ht->count++;
 
     entry->key = key;
     entry->value = value;
 
-#ifdef DEBUG_PRINT_CODE
-    printf("inserted: %s %s\n", key, value);
-#endif
-    
     return isNewKey;
 }
 
@@ -214,6 +209,10 @@ int main(int argc, char *argv[]) {
     table_add(ht, "jon", "doe1");
     table_add(ht, "jon1", "doe1");
     table_add(ht, "jon2", "doe2");
+    table_add(ht, "jon3", "doe3");
+    table_add(ht, "jon4", "doe4");
+    table_add(ht, "jon5", "doe5");
+    table_add(ht, "jon6", "doe6");
 
     print_entries(ht);
 
