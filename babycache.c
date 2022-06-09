@@ -264,11 +264,12 @@ int main(int argc, char *argv[]) {
 
     Table *ht = table_create();
 
-    int listenfd, connfd, n;
+    int listenfd, connfd, n, i;
     socklen_t clilen;
     char buf[MAXLINE];
     char delim[] = " ";
-    char *ptr;
+    char *ptr, lookup;
+    char *parts[3];
 
     struct sockaddr_in cliaddr, servaddr;
 
@@ -286,17 +287,26 @@ int main(int argc, char *argv[]) {
 
     for (;;) {
         clilen = sizeof(cliaddr);
-        connfd = accept (listenfd, (struct sockaddr *) &cliaddr, &clilen);
-        printf("%s\n","Received request...");
+        connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen);
 
-        while ( (n = recv(connfd, buf, MAXLINE,0)) > 0)  {
+        while ((n = recv(connfd, buf, MAXLINE,0)) > 0)  {
+            i = 0;
             ptr = strtok(buf, delim);
-            if (strcmp(ptr, COMMAND_STRING[ADD]) == 0) {
-                table_add(ht, strtok(buf, delim), strtok(buf, delim));
-            } else if (strcmp(ptr, COMMAND_STRING[GET]) == 0) {
-                char *value = table_get(ht, strtok(buf, delim));
-                send(connfd, value, strlen(value)+1, 0);
+            while (ptr != NULL) {
+                parts[i] = ptr;
+                ptr = strtok(NULL, delim);
+                i++;
             }
+            if (strcmp(parts[0], COMMAND_STRING[ADD]) == 0) {
+                table_add(ht, parts[1], parts[2]);
+                printf("ADD: %s %s\n", parts[1], parts[2]);
+            } else if (strcmp(parts[0], COMMAND_STRING[GET]) == 0) {
+                printf("GET: %s\n", parts[1]);
+                lookup = table_get(ht, parts[1]);
+                send(connfd, lookup, strlen(lookup), 0);
+            }
+            for(i=0; i<sizeof(parts)/sizeof(parts[0]);i++)
+                parts[i] = NULL;
         }
         if (n < 0) {
             perror("Read error");
