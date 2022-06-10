@@ -154,7 +154,7 @@ void print_entries(Table *ht) {
 }
 
 static Entry *find_entry(Entry *entries, int capacity, char *key) {
-    uint32_t index = hash_string(key) & (capacity - 1);
+    uint32_t index = hash_string(key) % (capacity - 1);
 
     Entry* tombstone = NULL;
   
@@ -169,7 +169,7 @@ static Entry *find_entry(Entry *entries, int capacity, char *key) {
         } else if (entry->key == key) {
             return entry;
         }
-        index = (index + 1) & (capacity - 1);
+        index = (index + 1) % (capacity - 1);
     }
 }
 
@@ -271,7 +271,7 @@ int main(int argc, char *argv[]) {
     int listenfd, connfd, n, i;
     socklen_t clilen;
     char buf[MAXLINE];
-    char delim[] = ";;";
+    char delim[] = "\n";
     char *ptr, *lookup, *msg;
     char *parts[3];
 
@@ -322,8 +322,9 @@ int main(int argc, char *argv[]) {
         }
         close(connfd);
     }
-    close (listenfd);
+    close(listenfd);
 
     table_free(ht);
+
     return 0;
 }
