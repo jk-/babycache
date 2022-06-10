@@ -9,7 +9,3 @@
 ```
 
 Just a tiny, distrbuted in-memory cache with zero persistence.
-
-The idea is to store small keys and small values.
-
-locally: GETS 18378.09/sec
