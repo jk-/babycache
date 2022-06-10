@@ -268,8 +268,8 @@ int main(int argc, char *argv[]) {
     int listenfd, connfd, n, i;
     socklen_t clilen;
     char buf[MAXLINE];
-    char delim[] = " ";
-    char *ptr, *lookup;
+    char delim[] = ";;";
+    char *ptr, *lookup, *msg;
     char *parts[3];
 
     struct sockaddr_in cliaddr, servaddr;
@@ -291,23 +291,20 @@ int main(int argc, char *argv[]) {
         connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen);
 
         printf("Connection made..\n");
-        while ((n = recv(connfd, buf, MAXLINE,0)) > 0)  {
-            printf("%s\n", buf);
+        while ((n = recv(connfd, buf, MAXLINE, 0)) > 0)  {
+            msg = strtok(buf, delim);
+            ptr = strtok(msg, " ");
             i = 0;
-            ptr = strtok(buf, delim);
-            printf("Command: %s\n", ptr);
             while (ptr != NULL) {
                 parts[i] = ptr;
-                ptr = strtok(NULL, delim);
+                ptr = strtok(NULL, " ");
                 i++;
             }
             if (strcmp(parts[0], COMMAND_STRING[ADD]) == 0) {
                 table_add(ht, parts[1], parts[2]);
                 send(connfd, "1", 1, 0);
-                printf("\tADDED: %s %s\n", parts[1], parts[2]);
             } else if (strcmp(parts[0], COMMAND_STRING[GET]) == 0) {
                 lookup = table_get(ht, parts[1]);
-                printf("\tGET: %s %s\n", parts[1], lookup);
                 if (lookup != NULL)
                     send(connfd, lookup, strlen(lookup), 0);
                 else
