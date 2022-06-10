@@ -79,6 +79,11 @@
  *      3. Accept a command to GET a key/value
  *
  * -- LEARNING LOG --
+ * When I sent a ton of ADD/GET(s) from python the buffer
+ * was including multiple calls. I had to change the delimeter
+ * so that the ending message was different from the delimeter char.
+ *
+ * After doing this everything worked.
  */
 
 
@@ -92,11 +97,13 @@
 #define LISTENQ         8       /*maximum number of client connections */
 
 #define FOREACH_COMMAND(CMD) \
-        CMD(ADD)   \
-        CMD(GET)  \
+        CMD(ADD) \
+        CMD(GET)
 
 #define GENERATE_ENUM(ENUM) ENUM,
 #define GENERATE_STRING(STRING) #STRING,
+
+/* HEADERS */
 
 enum COMMAND {
     FOREACH_COMMAND(GENERATE_ENUM)
@@ -105,8 +112,6 @@ enum COMMAND {
 static const char *COMMAND_STRING[] = {
     FOREACH_COMMAND(GENERATE_STRING)
 };
-
-/* HEADERS */
 
 typedef struct {
     char *key;
@@ -119,14 +124,12 @@ typedef struct {
     Entry *entries;
 } Table;
 
-
-void adjust_table_capacity(Table *ht, int capacity);
-
 Table *table_create();
 void table_init(Table *ht);
 void table_free(Table *ht);
 bool table_add(Table *ht, char *key, char *value);
 char *table_get(Table *ht, char *key);
+void adjust_table_capacity(Table *ht, int capacity);
 
 // static means it can only be used in this file
 static Entry *find_entry(Entry *entries, int capacity, char *key);
