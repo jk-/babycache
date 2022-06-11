@@ -86,13 +86,21 @@
  * After doing this everything worked.
  */
 
+/* VERSION: 4.0
+ * --------------------------
+ * Threading and Lock
+ *
+ * -- LEARNING LOG --
+ */
 
-#define TABLE_MAX_LOAD           0.75
+
+
+#define TABLE_MAX_LOAD           0.70
 #define GROW_CAPACITY(capacity)  ((capacity) < 8 ? 8 : (capacity) * 2)
 #define DEBUG_PRINT_CODE
 
 // SERVER
-#define MAXLINE         4096    /*max text line length*/
+#define MAXLINE         1024    /*max text line length*/
 #define SERV_PORT       6969    /*port*/
 #define LISTENQ         8       /*maximum number of client connections */
 
